@@ -1,0 +1,197 @@
+<!doctype html>
+<html>
+<head>
+  <title>Socket.IO chat</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font: 13px Helvetica, Arial; }
+    form { background: #ccc; padding: 2px; position: fixed; bottom: 0; width: 100%; }
+    form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+    form button { width: 16%;  border: none; padding: 10px; background-color: white;}
+    #messages { list-style-type: none; padding: 0; }
+    #messages li { padding: 0px 10px;}
+/*     #messages li:nth-child(odd) { background: #eee; } */
+	.messages {overflow-y: scroll; width: 100%; height: 355px; top:100px; position: fixed;}
+    #messages td.nickname { font-weight: bold; font-size: 100%; display: inline-block;  }
+	#messages li table {width: 100%;}
+	.liRight {text-align: right;}
+	
+    div.userList {position:fixed; background-color: #b6daf3;  border-radius:7px; text-align: center; 
+    width: 100%; height: 100px;  overflow-y: scroll;}
+    #userList { list-style-type: none; margin: 0; padding: 0; border-radius: 7px;}
+    #userList li { }
+
+    .noti { text-align: center; color: blue; }
+    #m {width: 83%}
+    
+    .colorNickname {color: #0000ff; text-align: right; margin: 3px;}
+    
+    .msg { border-radius: 5px; padding: 3px; background-color: #eee;}
+    
+    
+#style-1::-webkit-scrollbar-track
+{
+	-webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+	border-radius: 10px;
+	background-color: #F5F5F5;
+}
+
+#style-1::-webkit-scrollbar
+{
+	width: 12px;
+	background-color: #F5F5F5;
+}
+
+#style-1::-webkit-scrollbar-thumb
+{
+	border-radius: 10px;
+	-webkit-box-shadow: inset 0 0 6px rgba(0,0,0,.3);
+	background-color: #555;
+}
+
+#style1::-webkit-scrollbar-track
+{
+	-webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+	border-radius: 10px;
+	background-color: #F5F5F5;
+}
+
+#style1::-webkit-scrollbar
+{
+	width: 12px;
+	background-color: #F5F5F5;
+}
+
+#style1::-webkit-scrollbar-thumb
+{
+	border-radius: 10px;
+	-webkit-box-shadow: inset 0 0 6px rgba(0,0,0,.3);
+	background-color: #555;
+}
+    
+#after {border-radius: 7px;}
+  </style>
+</head>
+<body scrolling="no">
+
+
+<section id="after">
+  <div class="userList" id="style-1">
+    <h4 id="total">현재 접속자</h4>
+    <ul id="userList"></ul>
+  </div>
+
+  <div class="messages" id="style1">
+  <ul id="messages"></ul>
+  </div>
+  <form>
+    <input id="m" autocomplete="off" /><button>Send</button>
+  </form>
+</section>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+<script>
+
+var nickname;
+var socket = io();
+var myNickname = "";
+
+
+
+// 송신: 닉네임
+function fnNickname(e) {
+  socket.emit('join');  // 접속 이벤트
+}
+
+$(document).ready(function(){
+	fnNickname();
+})
+
+
+// 수신: 환영인사
+socket.on('welcome', function(data){
+	//내 닉네임 저장
+	myNickname = data.nickname;
+  // 유저리스트 업데이트
+  fnUpdateUserList(data.userList);
+  $('#total').text('현재 접속자('+data.userList.length+'명)');
+
+  $('#messages').append($('<li class="noti">').text(data.nickname + '님 환영합니다.'));  
+  scrollTop();
+});
+
+
+// 유저리스트 업데이트
+function fnUpdateUserList(userList) {
+  $('#userList').text('');
+  for (i = 0; i < userList.length; i++) {
+    $('#userList').append($('<li>').text(userList[i]));
+  };
+}
+
+// 수신: 신규자 접속
+socket.on('join', function(data){
+  // 입장 알림
+  $('#messages').append($('<li class="noti">').text(data.nickname + '님이 입장하셨습니다'));
+  scrollTop();
+  
+  // 유저리스트 업데이트
+  fnUpdateUserList(data.userList);
+});
+
+// 수신: 퇴장
+socket.on('left', function(data){
+  // 종료 알림
+  $('#messages').append($('<li class="noti">').text(data.nickname + '님이 퇴장하셨습니다'));
+  scrollTop();
+  
+  // 유저리스트 업데이트
+  fnUpdateUserList(data.userList);
+  $('#total').text('현재 접속자('+data.userList.length+'명)');
+});
+
+
+// 송신: 메시지
+$('form').submit(function(){
+  socket.emit('msg', $('#m').val());
+  $('#m').val('');
+  return false;
+});
+  
+
+// 수신: 메시지
+socket.on('msg', function(data){
+	var colorNickname=data.nickname;
+	if(myNickname == data.nickname){
+		colorNickname = '<div class="colorNickname">'+data.nickname+'</div>';
+	}
+	
+  var span = "<span>"+
+	"<table><tr><td class='nickname'>"+	  
+	colorNickname+
+		  "</td></tr><tr><td><span class='msg'>"+data.msg+"</span></td></tr></table></span>";
+	  if(myNickname == data.nickname){
+		  var li = $('<li class="liRight">').append(span);
+			  
+	  }else{
+		  var li = $('<li>').append(span);
+	  }
+	  if(data.msg != ""){
+		  $('#messages').append(li);
+	  }
+  scrollTop();
+});
+
+
+
+function scrollTop(){
+	$('.messages').scrollTop($('.messages')[0].scrollHeight);
+}
+
+
+</script>
+
+</body>
+</html>
+     
